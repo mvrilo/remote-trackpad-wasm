@@ -1,23 +1,33 @@
 package main
 
 import (
-	// #cgo LDFLAGS: -framework CoreGraphics
+	// #cgo LDFLAGS: -framework CoreGraphics -framework CoreFoundation
 	// #include <CoreGraphics/CoreGraphics.h>
+	// static void releaseCGEvent(CGEventRef o) {
+	// 	CFRelease(o);
+	// }
 	"C"
-	"fmt"
-	"unsafe"
+	"flag"
 )
 
+func moveMouse(x, y int) {
+	point := C.CGPointMake(C.CGFloat(x), C.CGFloat(y))
+
+	move := C.CGEventCreateMouseEvent(
+		0,
+		C.kCGEventMouseMoved,
+		point,
+		C.kCGMouseButtonLeft,
+	)
+
+	defer C.releaseCGEvent(move)
+	C.CGEventPost(C.kCGHIDEventTap, move)
+}
+
 func main() {
-	display := C.CGMainDisplayID
-	x := (C.CGFloat)(1)
-	y := (C.CGFloat)(2)
-	point := C.CGPointMake(x, y)
+	x := flag.Int("x", 0, "x position")
+	y := flag.Int("y", 0, "y position")
+	flag.Parse()
 
-	// displayid := unsafe.Int(display)
-	d := *(*C.uint)(unsafe.Pointer(&display))
-	p := *(*C.CGPoint)(unsafe.Pointer(&point))
-
-	res := C.CGDisplayMoveCursorToPoint(d, p)
-	fmt.Println(display, point, res)
+	moveMouse(*x, *y)
 }
