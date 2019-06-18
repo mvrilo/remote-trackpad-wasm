@@ -29,5 +29,10 @@ func main() {
 	y := flag.Int("y", 0, "y position")
 	flag.Parse()
 
+	if *x == 0 || *y == 0 {
+		flag.Usage()
+		return
+	}
+
 	moveMouse(*x, *y)
 }
