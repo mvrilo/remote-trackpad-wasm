@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <title>remote trackpad</title>
+    <meta name="description" content="Remote trackpad sample application built with go, websockets and wasm">
+    <meta name="keywords" content="go,cgo,wasm,websockets">
+    <meta name="author" content="Murilo Santana <mvrilo@gmail.com>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/wasm_exec.js"></script>
+  </head>
+  <body>
+    <div id="main"></div>
+    <script type="text/javascript">
+      const go = new Go();
+      fetch("/main.wasm")
+        .then(response => response.arrayBuffer())
+        .then(bytes => WebAssembly.instantiate(bytes, go.importObject))
+        .then(results => results.instance)
+        .then(instance => go.run(instance));
+    </script>
+  </body>
+</html>

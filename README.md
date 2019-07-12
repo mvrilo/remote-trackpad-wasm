@@ -1,20 +1,11 @@
-# mouse
+# Remote Trackpad WASM
+
+Sample application for a remote trackpad using Go, Websockets and WASM.
 
 
 ## Building
 
 `make`
-
-
-## Usage:
-
-``` 
-Usage of ./mouse:
-  -x int
-    	x position
-  -y int
-    	y position
-```
 
 
 ## Author
