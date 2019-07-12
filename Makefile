@@ -1,6 +1,6 @@
 all: build
 
-run: build
+run: clean build
 	./remote-trackpad-wasm
 
 build: wasm
