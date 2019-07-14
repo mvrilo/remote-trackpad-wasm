@@ -1,7 +1,4 @@
-all: build
-
-run: clean build
-	./remote-trackpad-wasm
+all: clean build
 
 build: wasm
 	go build -o remote-trackpad-wasm

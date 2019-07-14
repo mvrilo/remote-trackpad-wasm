@@ -1,4 +1,5 @@
 //+build js,wasm
+
 package main
 
 import (
@@ -6,9 +7,27 @@ import (
 	"syscall/js"
 )
 
-func domListener(ws js.Value) {
-	doc := js.Global().Get("document")
-	div := doc.Call("getElementById", "main")
+var ws js.Value = js.Global().Get("WebSocket").New("wss://10.0.0.3/ws")
+var div js.Value = js.Global().Get("document").Call("getElementById", "main")
+
+func fireEvent(eventName string, args []js.Value) {
+	event := args[0]
+	event.Call("preventDefault")
+
+	touch := event.Get("changedTouches")
+	if touch.Length() == 0 {
+		return
+	}
+
+	point := touch.Index(0)
+	x := point.Get("pageX").Int()
+	y := point.Get("pageY").Int()
+
+	ws.Call("send", fmt.Sprintf(`{ "type": "%s", "data": { "x": %d, "y": %d } }`, eventName, x, y))
+}
+
+func main() {
+	done := make(chan struct{})
 
 	style := div.Get("style")
 	style.Set("position", "absolute")
@@ -18,43 +37,31 @@ func domListener(ws js.Value) {
 	style.Set("width", "100%")
 	style.Set("height", "100%")
 
+	var isMove bool
+
+	onTouchStart := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		isMove = false
+		return nil
+	})
+
 	onTouchMove := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		event.Call("preventDefault")
+		isMove = true
+		fireEvent("move", args)
 
-		touch := event.Get("changedTouches")
-		if touch.Length() > 0 {
-			point := touch.Index(0)
-			x := point.Get("pageX").Int()
-			y := point.Get("pageY").Int()
-			data := fmt.Sprintf(`{ "x": %d, "y": %d }`, x, y)
-			ws.Call("send", data)
+		return nil
+	})
+
+	onTouchEnd := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if !isMove {
+			fireEvent("tap", args)
 		}
+
 		return nil
 	})
 
+	div.Set("ontouchstart", onTouchStart)
 	div.Set("ontouchmove", onTouchMove)
-}
-
-func wsListener(ws js.Value) {
-	var onOpen js.Func
-	onOpen = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		println("open!")
-		// onOpen.Release()
-		return nil
-	})
-	ws.Set("onopen", onOpen)
-}
-
-func main() {
-	println("start")
-	done := make(chan struct{})
-
-	websocket := js.Global().Get("WebSocket")
-	ws := websocket.New("wss://cthulhu.local:8080/ws")
-
-	domListener(ws)
-	wsListener(ws)
+	div.Set("ontouchend", onTouchEnd)
 
 	<-done
 }

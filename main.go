@@ -1,6 +1,9 @@
+//+build darwin
+
 package main
 
 import (
+
 	// #cgo LDFLAGS: -framework CoreGraphics -framework CoreFoundation
 	// #include <CoreGraphics/CoreGraphics.h>
 	// static void releaseCGEvent(CGEventRef o) {
@@ -12,67 +15,88 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/websocket"
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
 )
+import "fmt"
 
-// routes:
-// /
-// /ws
-// /wasm_exec.js
-// /main.wasm
+type event struct {
+	Type string
+	Data *position
+}
 
-var upgrader = websocket.Upgrader{}
-
-type move struct {
+type position struct {
 	X int
 	Y int
 }
 
-func ws(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
+func wsHandler(w http.ResponseWriter, r *http.Request) {
+	conn, _, _, err := ws.UpgradeHTTP(r, w)
 	if err != nil {
-		log.Print("upgrade:", err)
+		log.Println(err)
 		return
 	}
 
-	defer c.Close()
-	for {
-		mt, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
-		}
+	go func() {
+		defer conn.Close()
 
-		var data = move{}
-		if err := json.Unmarshal(message, &data); err != nil {
-			log.Println(err)
-			break
-		}
+		for {
+			msg, _, err := wsutil.ReadClientData(conn)
+			if err != nil {
+				log.Println(err)
+				break
+			}
 
-		println(data.X, data.Y)
-		moveMouse(&data)
+			println("-> receive data:", string(msg))
 
-		// log.Printf("recv: %s", message)
-		err = c.WriteMessage(mt, []byte("ok"))
-		if err != nil {
-			// log.Println("write:", err)
-			break
+			var evt = event{}
+			if err := json.Unmarshal(msg, &evt); err != nil {
+				log.Println(err)
+				break
+			}
+
+			if evt.Type == "tap" {
+				tap(evt.Data)
+			} else {
+				move(evt.Data)
+			}
 		}
-	}
+	}()
 }
 
-func moveMouse(pos *move) {
+func tap(pos *position) {
 	point := C.CGPointMake(C.CGFloat(pos.X), C.CGFloat(pos.Y))
 
-	move := C.CGEventCreateMouseEvent(
+	tapEvent := C.CGEventCreateMouseEvent(
+		0,
+		C.kCGEventLeftMouseDown,
+		point,
+		C.kCGMouseButtonLeft,
+	)
+
+	defer C.releaseCGEvent(tapEvent)
+	C.CGEventPost(C.kCGHIDEventTap, tapEvent)
+}
+
+func move(pos *position) {
+	point := C.CGPointMake(C.CGFloat(pos.X), C.CGFloat(pos.Y))
+
+	moveEvent := C.CGEventCreateMouseEvent(
 		0,
 		C.kCGEventMouseMoved,
 		point,
 		C.kCGMouseButtonLeft,
 	)
 
-	defer C.releaseCGEvent(move)
-	C.CGEventPost(C.kCGHIDEventTap, move)
+	defer C.releaseCGEvent(moveEvent)
+	C.CGEventPost(C.kCGHIDEventTap, moveEvent)
+}
+
+func getPosition() {
+	var evt C.CGEventRef = C.CGEventCreate(0)
+	var loc C.CGPoint = C.CGEventGetLocation(evt)
+	fmt.Printf("Current mouse position -> x: %f y: %f\n", loc.x, loc.y)
+	C.releaseCGEvent(evt)
 }
 
 func main() {
@@ -81,9 +105,19 @@ func main() {
 	key := flag.String("key", "", "https key")
 	flag.Parse()
 
-	http.HandleFunc("/ws", ws)
-	http.Handle("/", http.FileServer(http.Dir("./assets")))
+	getPosition()
+
+	router := http.NewServeMux()
+	router.HandleFunc("/ws", wsHandler)
+	router.Handle("/", http.FileServer(http.Dir("./assets")))
+
+	server := &http.Server{
+		Handler: router,
+		Addr:    *addr,
+	}
+
+	server.SetKeepAlivesEnabled(true)
 
 	println("Server started at", *addr)
-	log.Fatal(http.ListenAndServeTLS(*addr, *cert, *key, nil))
+	log.Fatal(server.ListenAndServeTLS(*cert, *key))
 }
