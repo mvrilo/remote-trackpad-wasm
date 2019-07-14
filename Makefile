@@ -1,7 +1,10 @@
 all: clean build
 
-build: wasm
+build: dep wasm
 	go build -o remote-trackpad-wasm
+
+dep:
+	go mod download
 
 wasm: wasm-dep
 	GOOS=js GOARCH=wasm go build -o assets/main.wasm ./wasm/main.go
