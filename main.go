@@ -63,32 +63,26 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-func tap(pos *position) {
+func makeEvent(mouseEvent C.CGEventType, pos *position) {
 	point := C.CGPointMake(C.CGFloat(pos.X), C.CGFloat(pos.Y))
 
-	tapEvent := C.CGEventCreateMouseEvent(
+	evt := C.CGEventCreateMouseEvent(
 		0,
-		C.kCGEventLeftMouseDown,
+		mouseEvent,
 		point,
 		C.kCGMouseButtonLeft,
 	)
 
-	defer C.releaseCGEvent(tapEvent)
-	C.CGEventPost(C.kCGHIDEventTap, tapEvent)
+	defer C.releaseCGEvent(evt)
+	C.CGEventPost(C.kCGHIDEventTap, evt)
+}
+
+func tap(pos *position) {
+	makeEvent(C.kCGEventLeftMouseDown, pos)
 }
 
 func move(pos *position) {
-	point := C.CGPointMake(C.CGFloat(pos.X), C.CGFloat(pos.Y))
-
-	moveEvent := C.CGEventCreateMouseEvent(
-		0,
-		C.kCGEventMouseMoved,
-		point,
-		C.kCGMouseButtonLeft,
-	)
-
-	defer C.releaseCGEvent(moveEvent)
-	C.CGEventPost(C.kCGHIDEventTap, moveEvent)
+	makeEvent(C.kCGEventMouseMoved, pos)
 }
 
 func main() {
