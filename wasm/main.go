@@ -7,7 +7,7 @@ import (
 	"syscall/js"
 )
 
-var ws js.Value = js.Global().Get("WebSocket").New("wss://10.0.0.3/ws")
+var ws js.Value = js.Global().Get("WebSocket").New("wss://10.0.0.3:4430/ws")
 var div js.Value = js.Global().Get("document").Call("getElementById", "main")
 
 func fireEvent(eventName string, args []js.Value) {

@@ -18,7 +18,6 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 )
-import "fmt"
 
 type event struct {
 	Type string
@@ -92,20 +91,11 @@ func move(pos *position) {
 	C.CGEventPost(C.kCGHIDEventTap, moveEvent)
 }
 
-func getPosition() {
-	var evt C.CGEventRef = C.CGEventCreate(0)
-	var loc C.CGPoint = C.CGEventGetLocation(evt)
-	fmt.Printf("Current mouse position -> x: %f y: %f\n", loc.x, loc.y)
-	C.releaseCGEvent(evt)
-}
-
 func main() {
 	addr := flag.String("addr", ":8080", "http server address")
 	cert := flag.String("cert", "", "https cert")
 	key := flag.String("key", "", "https key")
 	flag.Parse()
-
-	getPosition()
 
 	router := http.NewServeMux()
 	router.HandleFunc("/ws", wsHandler)
@@ -115,8 +105,6 @@ func main() {
 		Handler: router,
 		Addr:    *addr,
 	}
-
-	server.SetKeepAlivesEnabled(true)
 
 	println("Server started at", *addr)
 	log.Fatal(server.ListenAndServeTLS(*cert, *key))
