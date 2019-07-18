@@ -1,8 +1,8 @@
 # Remote Trackpad WASM
 
-Application for a remote trackpad using cgo, websockets and wasm.
+Remote trackpad built with go, websockets and wasm.
 
-This is an unfinished yet working PoC tested on Mac OS.
+This is an unfinished yet working PoC implemented for Mac OS, using the CoreFoundation api. This was built as an experiment to mess around with cgo and wasm support in go.
 
 
 ## Building
@@ -24,6 +24,7 @@ Generate a certificate and install it on your mobile device. You can use [mkcert
   -key ./key.pem
 ```
 
+Access `https://10.0.0.3:4430` from a mobile device in your local network and drag around the webpage.
 After the server start, the system will ask you to grant access to accessibility features.
 
 
